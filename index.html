@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dimas &amp; Laras</title>
+<style>
+:root{--bg:#3b2a1c;--card:#fff8ea;--ink:#4a2f1a;--green:#4c7a45;--pink:#d9667a;--wood:#8a5a32;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#1f160e}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;color:var(--ink);overflow:hidden;touch-action:none}
+#app{position:fixed;inset:0;max-width:520px;margin:auto}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+#title{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:10px;background:var(--wood);border:3px solid #5c3a1e;border-radius:10px;padding:6px 14px;text-align:center;box-shadow:0 3px 0 #3d2410}
+#title small{display:block;background:var(--card);border-radius:4px;font-size:8px;letter-spacing:.08em;padding:2px 6px;font-weight:700}
+#title b{display:block;color:#ffd770;font-size:22px;text-shadow:0 2px 0 #3d2410}
+#title i{display:block;font-style:normal;background:#6b4425;color:#f6dcae;border-radius:99px;font-size:9px;padding:2px 8px;font-weight:700;margin-top:2px}
+#joy{position:absolute;left:18px;bottom:calc(76px + env(safe-area-inset-bottom,0px));width:96px;height:96px;border-radius:50%;background:#ffffff40;border:2px solid #ffffff80}
+#knob{position:absolute;left:30px;top:30px;width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 2px 6px #0004}
+#act{position:absolute;right:18px;bottom:calc(88px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;border:3px solid #fff;background:var(--green);color:#fff;font-weight:800;font-size:12px;display:none}
+#tabs{position:absolute;left:8px;right:8px;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;background:#fff8eaee;border-radius:99px;padding:5px}
+#tabs button{flex:1;border:0;border-radius:99px;padding:9px 4px;font:700 12px inherit;font-family:inherit;background:none;color:var(--ink)}
+#tabs button:first-child{background:var(--green);color:#fff}
+#say{position:absolute;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--card);border:3px solid var(--wood);border-radius:16px;padding:12px 14px;font-size:14px;display:none}
+#say em{position:absolute;top:-14px;left:14px;background:var(--wood);color:#fff;font-style:normal;font-size:11px;font-weight:800;padding:2px 10px;border-radius:8px}
+#modal{position:absolute;inset:0;background:#0007;display:none;align-items:center;justify-content:center;padding:18px}
+#box{background:var(--card);border:4px solid var(--wood);border-radius:20px;padding:18px;width:100%;max-height:82%;overflow:auto;touch-action:pan-y;position:relative}
+#box h2{margin:0 0 6px;font-size:20px}#box p{margin:6px 0;line-height:1.5;font-size:14px}
+.row{display:flex;gap:10px;background:#fff;border:2px solid #ecd9b5;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px}
+.row b{background:var(--wood);color:#fff;border-radius:6px;padding:1px 7px;height:fit-content;font-size:12px}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:11px;margin-top:8px;font:800 14px inherit;font-family:inherit;color:#fff;background:var(--green);text-align:center;text-decoration:none}
+.btn.p{background:var(--pink)}
+#x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:22px;color:var(--ink)}
+input,textarea{width:100%;font:14px inherit;font-family:inherit;padding:9px;border:2px solid #ecd9b5;border-radius:10px;margin:4px 0;background:#fff;color:var(--ink)}
+label{font-size:13px;margin-right:12px}
+</style></head><body>
+<div id="app">
+<canvas id="c"></canvas>
+<div id="title"><small>PERNIKAHAN DI TENGAH KEBUN</small><b>Dimas &amp; Laras</b><i>SABTU · 19 JUNI 2027</i></div>
+<div id="joy"><div id="knob"></div></div>
+<button id="act">BUKA</button>
+<div id="say"><em id="who"></em><span id="txt"></span></div>
+<div id="tabs"><button data-g="surat">Surat buat kamu</button><button data-g="detail">Detail acara</button><button data-g="rsvp">Ucapan &amp; RSVP</button></div>
+<div id="modal"><div id="box"><button id="x">×</button><div id="in"></div></div></div>
+</div>
+<script>
+const T=32,W=18,H=28,cv=document.getElementById('c'),g=cv.getContext('2d');
+const spots={
+ surat:{x:6.5,y:17.5,label:'Surat buat kamu',c:'#fff'},
+ detail:{x:4.5,y:11.5,label:'Detail acara',c:'#f7a8b8'},
+ rsvp:{x:13.5,y:11.5,label:'Ucapan & RSVP',c:'#fff'},
+ janji:{x:9,y:6.5,label:'Janji suci',c:'#fff'}};
+const P={x:9,y:25,vx:0,vy:0,dir:1};
+const trees=[[1,3],[2,8],[1,14],[3,15],[14,3],[16,8],[15,15],[16,17],[2,24],[15,24],[12,16],[5,5],[13,5]];
+const pinks=new Set(['2,8','16,8','3,15','15,15']);
+const water={y0:20,y1:22,bx0:8,bx1:10};
+const msgs={surat:['Surat buat kamu','Halo, kamu yang spesial ✨<br><br>Kami lagi menyiapkan satu hari yang sederhana, hangat, dan penuh orang-orang tersayang. Kehadiranmu adalah hadiah terbaik buat kami.<br><br>Sampai ketemu di kebun, ya!<br><b>— Dimas &amp; Laras</b>'],
+};
+function open(h){document.getElementById('in').innerHTML=h;modal.style.display='flex'}
+const modal=document.getElementById('modal');
+document.getElementById('x').onclick=()=>modal.style.display='none';
+const ucapan=[];
+function show(k){
+ if(k==='surat')open('<h2>Surat buat kamu</h2><p>Halo, kamu yang spesial ✨</p><p>Kami lagi menyiapkan satu hari yang sederhana, hangat, dan penuh orang-orang tersayang. Kehadiranmu adalah hadiah terbaik buat kami.</p><p>Sampai ketemu di kebun, ya!<br><b>— Dimas &amp; Laras</b></p>');
+ if(k==='detail')open('<h2>Sabtu yang pelan dan cerah.</h2><p>Semua acara ada di Rumah Kebun Cemara, di tengah kebun yang rindang.</p><div class="row"><b>15.00</b>Janji suci di bawah lengkung bunga</div><div class="row"><b>16.00</b>Makan malam di kebun</div><div class="row"><b>17.30</b>Potong kue &amp; sesi foto</div><div class="row"><b>19.00</b>Penutupan dengan lampu kebun</div><a class="btn" href="https://maps.google.com" target="_blank">Buka di Maps</a><button class="btn p" onclick="addCal()">Simpan ke kalender</button>');
+ if(k==='rsvp')rsvp();
+ if(k==='janji')say('Dimas & Laras','Kamu datang! Kami senang banget kamu ada di sini. 💛');
+}
+function rsvp(){open('<h2>Ucapan &amp; RSVP</h2><input id="n" placeholder="Namamu"><div style="margin:6px 0"><label><input type="radio" name="h" value="Hadir" checked style="width:auto"> Hadir</label><label><input type="radio" name="h" value="Berhalangan" style="width:auto"> Berhalangan</label></div><textarea id="m" rows="3" placeholder="Tulis ucapan..."></textarea><button class="btn p" onclick="send()">Kirim</button><div id="l">'+ucapan.map(u=>'<div class="row"><div><b style="background:none;color:var(--ink);padding:0">'+u[0]+' ('+u[1]+')</b><br>'+u[2]+'</div></div>').join('')+'</div>')}
+function send(){const n=document.getElementById('n').value.trim()||'Tamu';const e=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));ucapan.unshift([e(n),document.querySelector('input[name=h]:checked').value,e(document.getElementById('m').value)]);rsvp()}
+function addCal(){window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text=Pernikahan+Dimas+%26+Laras&dates=20270619T080000Z/20270619T120000Z','_blank')}
+const sayEl=document.getElementById('say');let sayT;
+function say(w,t){document.getElementById('who').textContent=w;document.getElementById('txt').textContent=t;sayEl.style.display='block';clearTimeout(sayT);sayT=setTimeout(()=>sayEl.style.display='none',4500)}
+setTimeout(()=>say('Penjaga buku tamu','Hari ini aku yang jaga buku tamu buat Dimas & Laras. Geser joystick buat jalan-jalan!'),600);
+
+// input
+const keys={};addEventListener('keydown',e=>keys[e.key]=1);addEventListener('keyup',e=>keys[e.key]=0);
+const joy=document.getElementById('joy'),knob=document.getElementById('knob');let jv={x:0,y:0},jid=null;
+function jm(e){const r=joy.getBoundingClientRect(),dx=e.clientX-r.left-48,dy=e.clientY-r.top-48,d=Math.hypot(dx,dy)||1,k=Math.min(d,36)/d;
+ knob.style.transform=`translate(${dx*k}px,${dy*k}px)`;jv={x:dx*k/36,y:dy*k/36}}
+joy.onpointerdown=e=>{jid=e.pointerId;joy.setPointerCapture(jid);jm(e);target=null};
+joy.onpointermove=e=>{if(e.pointerId===jid)jm(e)};
+joy.onpointerup=joy.onpointercancel=()=>{jid=null;jv={x:0,y:0};knob.style.transform=''};
+let target=null;
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{const s=spots[b.dataset.g];target={x:s.x,y:s.y+1.1,k:b.dataset.g}});
+const act=document.getElementById('act');let near=null;act.onclick=()=>near&&show(near);
+
+function blocked(x,y){
+ if(x<.6||x>W-.6||y<.8||y>H-.5)return true;
+ if(y>water.y0&&y<water.y1&&!(x>water.bx0&&x<water.bx1))return true;
+ if(x>5.5&&x<12.5&&y<5.2)return true;
+ for(const[t,u]of trees)if(Math.abs(x-t-.5)<.6&&Math.abs(y-u-.5)<.55)return true;
+ return false}
+function rnd(s){return(Math.sin(s*127.1)*43758.5)%1}
+function draw(){
+ const w=cv.width=cv.clientWidth*devicePixelRatio,h=cv.height=cv.clientHeight*devicePixelRatio;
+ const s=w/(9.5*T);g.setTransform(s,0,0,s,0,0);g.imageSmoothingEnabled=false;
+ const vw=w/s,vh=h/s;
+ const cx=Math.max(0,Math.min(W*T-vw,P.x*T-vw/2)),cy=Math.max(0,Math.min(H*T-vh,P.y*T-vh*.55));
+ g.translate(-cx,-cy);
+ // grass
+ for(let i=0;i<W;i++)for(let j=0;j<H;j++){g.fillStyle=(i+j)%2?'#7fb05a':'#86b861';g.fillRect(i*T,j*T,T,T)}
+ // path
+ g.fillStyle='#e3c993';g.fillRect(8*T,0,2*T,H*T);
+ g.fillRect(3*T,11*T,12*T,T);
+ // river
+ g.fillStyle='#4fb3c0';g.fillRect(0,water.y0*T,W*T,(water.y1-water.y0)*T);
+ g.fillStyle='#ffffff55';for(let i=0;i<W;i++)g.fillRect(i*T+8,water.y0*T+10+(i%2)*16,14,3);
+ // bridge
+ g.fillStyle='#b9562f';g.fillRect(8*T,(water.y0-.3)*T,2*T,(water.y1-water.y0+.6)*T);
+ g.fillStyle='#8c3d20';for(let k=0;k<7;k++)g.fillRect(8*T,(water.y0+k*.3)*T,2*T,3);
+ g.fillStyle='#d9663a';g.fillRect(7.7*T,(water.y0-.3)*T,.3*T,(water.y1-water.y0+.6)*T);g.fillRect(10*T,(water.y0-.3)*T,.3*T,(water.y1-water.y0+.6)*T);
+ // fences
+ g.fillStyle='#a0703c';for(let i=0;i<W;i++){if(i>7&&i<10)continue;g.fillRect(i*T,15*T,T,4);g.fillRect(i*T+4,15*T-6,4,16)}
+ // house
+ g.fillStyle='#f1dfb5';g.fillRect(6*T,3*T,6*T,2.4*T);
+ g.fillStyle='#cf4f2d';g.beginPath();g.moveTo(5.3*T,3.2*T);g.lineTo(9*T,.2*T);g.lineTo(12.7*T,3.2*T);g.fill();
+ g.fillStyle='#8fd0cf';g.fillRect(6.5*T,3.6*T,T,T);g.fillRect(10.5*T,3.6*T,T,T);
+ g.fillStyle='#a0703c';g.fillRect(8.2*T,3.6*T,1.6*T,1.8*T);
+ // arch + stage
+ g.fillStyle='#fff';g.beginPath();g.ellipse(9*T,7*T,2.3*T,1.1*T,0,0,7);g.fill();
+ g.strokeStyle='#e7a5b4';g.lineWidth=6;g.beginPath();g.arc(9*T,5.9*T,1.1*T,Math.PI,0);g.stroke();
+ // couple
+ person(8.6,6.5,'#37452f','#2b1f17');person(9.4,6.5,'#fff','#4a2f1a');
+ // trees (sorted draw after player below)
+ // spots
+ for(const k of['surat','detail','rsvp']){const p=spots[k];
+  g.fillStyle='#8a5a32';g.fillRect(p.x*T-3,p.y*T-4,6,22);
+  g.fillStyle=k==='surat'?'#e66a78':'#f3e2bd';g.fillRect(p.x*T-14,p.y*T-18,28,20);
+  g.fillStyle='#5c3a1e';g.fillRect(p.x*T-14,p.y*T-18,28,3)}
+ // flowers
+ for(let i=0;i<40;i++){g.fillStyle=i%3?'#fff':'#f7a8b8';g.fillRect(Math.abs(rnd(i+1))*W*T,Math.abs(rnd(i+9))*H*T,3,3)}
+ // player & trees sorted
+ const items=trees.map(([a,b])=>({y:b+1,f:()=>tree(a,b)}));
+ items.push({y:P.y,f:()=>person(P.x,P.y,'#c9a24a','#3a2a1a',true)});
+ items.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
+ // labels
+ g.font='bold 9px sans-serif';g.textAlign='center';
+ for(const k in spots){const p=spots[k],tw=g.measureText(p.label).width+14,d=Math.hypot(P.x-p.x,P.y-p.y);
+  g.fillStyle=d<2?'#fff':p.c;g.globalAlpha=d<2?1:.9;g.beginPath();g.roundRect(p.x*T-tw/2,p.y*T-40,tw,16,8);g.fill();g.globalAlpha=1;
+  g.fillStyle='#4a2f1a';g.fillText(p.label,p.x*T,p.y*T-28)}
+}
+function tree(a,b){const pk=pinks.has(a+','+b);g.fillStyle='#6b4425';g.fillRect((a+.4)*T,(b+.9)*T,.3*T,.4*T);
+ g.fillStyle=pk?'#e8a1a4':'#3f8a3f';g.fillRect(a*T,b*T-4,T+4,T+6);g.fillStyle=pk?'#d98a8f':'#2f6f33';g.fillRect(a*T+T/2,b*T-4,T/2+4,T+6)}
+function person(x,y,body,hair,hat){const px=x*T,py=y*T;g.fillStyle='#0003';g.beginPath();g.ellipse(px,py+2,9,4,0,0,7);g.fill();
+ g.fillStyle=body;g.fillRect(px-6,py-14,12,14);g.fillStyle='#f0c7a0';g.fillRect(px-6,py-26,12,11);
+ g.fillStyle=hair;g.fillRect(px-7,py-28,14,5);if(hat){g.fillStyle='#e3c06a';g.fillRect(px-11,py-24,22,3)}}
+let last=performance.now();
+function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;
+ let ax=jv.x+(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),ay=jv.y+(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+ if(target){const dx=target.x-P.x,dy=target.y-P.y,d=Math.hypot(dx,dy);if(d<.2){const k=target.k;target=null;show(k)}else{ax=dx/d;ay=dy/d}}
+ const m=Math.hypot(ax,ay);if(m>.1){if(m>1){ax/=m;ay/=m}const sp=4.2;
+  let nx=P.x+ax*sp*dt,ny=P.y+ay*sp*dt;
+  if(target&&(blocked(nx,P.y)||blocked(P.x,ny)))target.y=target.y; // allow sliding
+  if(!blocked(nx,P.y))P.x=nx;if(!blocked(P.x,ny))P.y=ny}
+ near=null;let best=2;for(const k in spots){const d=Math.hypot(P.x-spots[k].x,P.y-spots[k].y);if(d<best){best=d;near=k}}
+ act.style.display=near?'block':'none';if(near)act.textContent=near==='janji'?'SAPA':'BUKA';
+ draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+</script></body></html>
